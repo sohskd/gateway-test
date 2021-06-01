@@ -1,13 +1,10 @@
 package com.demo.gateway.config;
 
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
-
 import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.WebClientHttpRoutingFilter;
 import org.springframework.cloud.gateway.filter.WebClientWriteResponseFilter;
 import org.springframework.cloud.gateway.filter.headers.HttpHeadersFilter;
@@ -25,87 +22,97 @@ import org.springframework.security.oauth2.client.web.DefaultReactiveOAuth2Autho
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServerOAuth2AuthorizedClientExchangeFilterFunction;
 import org.springframework.security.oauth2.client.web.server.ServerOAuth2AuthorizedClientRepository;
 import org.springframework.security.web.server.SecurityWebFilterChain;
-import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
-
 import reactor.core.publisher.Mono;
 
 @Configuration
 @EnableWebFluxSecurity
 public class SecurityConfig {
 
-	@Value("${client-registration-id}")
-	private String clientRegistrationId;
-	
-	@Bean
-	public SecurityWebFilterChain configure(ServerHttpSecurity http) {
-		http.authorizeExchange(exchanges -> exchanges.anyExchange().permitAll()).oauth2Client();
-		return http.build();
-	}
-	
-	
-	@Bean 
-	public WebClientHttpRoutingFilter webClientHttpRoutingFilter(WebClient webClient, ObjectProvider<List<HttpHeadersFilter>> headersFilters) { 
-		return new WebClientHttpRoutingFilter(webClient, headersFilters);
-	}
+//  @Value("${client-registration-id}")
+//  private String clientRegistrationId;
 
-	@Bean
-	public WebClientWriteResponseFilter webClientWriteResponseFilter() {
-		return new WebClientWriteResponseFilter();
-	}
-	
-	@Bean
-    WebClient webClient(ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
-        ServerOAuth2AuthorizedClientExchangeFilterFunction oauth =
-                new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
-        oauth.setDefaultOAuth2AuthorizedClient(true);
-        oauth.setDefaultClientRegistrationId(clientRegistrationId);
-        return WebClient.builder()
-                .filter(oauth)
-                .build();
-        
-    }
-	
-	@Bean
-    public ReactiveOAuth2AuthorizedClientManager authorizedClientManager(
-            ReactiveClientRegistrationRepository clientRegistrationRepository,
-            ServerOAuth2AuthorizedClientRepository authorizedClientRepository) {
+  @Bean
+  public SecurityWebFilterChain configure(ServerHttpSecurity http) {
+    http.authorizeExchange(exchanges -> exchanges.anyExchange().permitAll()).oauth2Client();
+    return http.build();
+  }
 
-        ReactiveOAuth2AuthorizedClientProvider authorizedClientProvider =
-                ReactiveOAuth2AuthorizedClientProviderBuilder.builder()
-                        //.refreshToken()
-                		.password()
-                		.clientCredentials()
-                        .build();
-        
-        DefaultReactiveOAuth2AuthorizedClientManager authorizedClientManager =
-                new DefaultReactiveOAuth2AuthorizedClientManager(
-                        clientRegistrationRepository, authorizedClientRepository);
-        authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
 
-        // For the `password` grant, the `username` and `password` are supplied via request parameters,
-        // so map it to `OAuth2AuthorizationContext.getAttributes()`.
-        authorizedClientManager.setContextAttributesMapper(contextAttributesMapper());
+  @Bean
+  public WebClientHttpRoutingFilter webClientHttpRoutingFilter(WebClient webClient,
+      ObjectProvider<List<HttpHeadersFilter>> headersFilters) {
+    return new WebClientHttpRoutingFilter(webClient, headersFilters);
+  }
 
-        return authorizedClientManager;
-    }
-	
+  @Bean
+  public WebClientWriteResponseFilter webClientWriteResponseFilter() {
+    return new WebClientWriteResponseFilter();
+  }
 
-    private Function<OAuth2AuthorizeRequest, Mono<Map<String, Object>>> contextAttributesMapper() {
-        return authorizeRequest -> {
-            Map<String, Object> contextAttributes = Collections.emptyMap();
-            
-            // TODO: move to configuration
-            String username = ""; //username client app
-            String password = ""; //password client app
-            if (StringUtils.hasText(username) && StringUtils.hasText(password)) {
-                contextAttributes = new HashMap<>();
+  @Bean
+  WebClient webClient(ReactiveOAuth2AuthorizedClientManager authorizedClientManager) {
+    ServerOAuth2AuthorizedClientExchangeFilterFunction oauth =
+        new ServerOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
+    oauth.setDefaultOAuth2AuthorizedClient(true);
+//    oauth.setDefaultClientRegistrationId("clientRegistrationId");
+    return WebClient.builder()
+        .filter(oauth)
+        .build();
 
-                // `PasswordOAuth2AuthorizedClientProvider` requires both attributes
-                contextAttributes.put(OAuth2AuthorizationContext.USERNAME_ATTRIBUTE_NAME, username);
-                contextAttributes.put(OAuth2AuthorizationContext.PASSWORD_ATTRIBUTE_NAME, password);
-            }
-            return Mono.just(contextAttributes);
-        };
-    }
+  }
+
+  @Bean
+  public ReactiveOAuth2AuthorizedClientManager authorizedClientManager(
+      ReactiveClientRegistrationRepository clientRegistrationRepository,
+      ServerOAuth2AuthorizedClientRepository authorizedClientRepository) {
+
+    ReactiveOAuth2AuthorizedClientProvider authorizedClientProvider =
+        ReactiveOAuth2AuthorizedClientProviderBuilder.builder()
+            //.refreshToken()
+            .password()
+            .clientCredentials()
+            .build();
+
+    DefaultReactiveOAuth2AuthorizedClientManager authorizedClientManager =
+        new DefaultReactiveOAuth2AuthorizedClientManager(
+            clientRegistrationRepository, authorizedClientRepository);
+    authorizedClientManager.setAuthorizedClientProvider(authorizedClientProvider);
+
+    // For the `password` grant, the `username` and `password` are supplied via request parameters,
+    // so map it to `OAuth2AuthorizationContext.getAttributes()`.
+    authorizedClientManager.setContextAttributesMapper(contextAttributesMapper());
+
+    return authorizedClientManager;
+  }
+
+
+  private Function<OAuth2AuthorizeRequest, Mono<Map<String, Object>>> contextAttributesMapper() {
+    Map<String, Object> contextAttributes = Collections.emptyMap();
+
+    return new Function<OAuth2AuthorizeRequest, Mono<Map<String, Object>>>() {
+      @Override
+      public Mono<Map<String, Object>> apply(OAuth2AuthorizeRequest oAuth2AuthorizeRequest) {
+        contextAttributes.put(OAuth2AuthorizationContext.USERNAME_ATTRIBUTE_NAME, "desmond.sohsk@shopee.com");
+        contextAttributes.put(OAuth2AuthorizationContext.PASSWORD_ATTRIBUTE_NAME, "password");
+        return Mono.just(contextAttributes);
+      }
+    };
+
+//    return authorizeRequest -> {
+//      Map<String, Object> contextAttributes = Collections.emptyMap();
+//
+//      // TODO: move to configuration
+//      String username = "desmond.sohsk@shopee.com"; //username client app
+//      String password = "password"; //password client app
+//      if (StringUtils.hasText(username) && StringUtils.hasText(password)) {
+//        contextAttributes = new HashMap<>();
+//
+//        // `PasswordOAuth2AuthorizedClientProvider` requires both attributes
+//        contextAttributes.put(OAuth2AuthorizationContext.USERNAME_ATTRIBUTE_NAME, username);
+//        contextAttributes.put(OAuth2AuthorizationContext.PASSWORD_ATTRIBUTE_NAME, password);
+//      }
+//      return Mono.just(contextAttributes);
+//    };
+  }
 }
